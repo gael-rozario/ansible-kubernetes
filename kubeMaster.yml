@@ -1,0 +1,48 @@
+- hosts: kubemaster
+  become: yes
+  tasks:
+    - name: install kubectl
+      become_user: root
+      apt:
+       name: kubectl=1.14.0-00
+       state: present
+       force: yes
+
+    - name: initialize the cluster
+      become_user: root
+      shell: kubeadm init --pod-network-cidr=10.20.0.0/16 >> cluster_initialized.txt
+      args:
+        chdir: $HOME
+        creates: cluster_initialized.txt
+
+    - name: create the 'kubeuser' user
+      user: name=kubeuser append=yes state=present createhome=yes shell=/bin/bash
+
+    - name: allow 'kubeuser' to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        line: 'kubeuser ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: create .kube directory
+      become: yes
+      become_user: kubeuser
+      file:
+        path: $HOME/.kube
+        state: directory
+        mode: 0755
+
+    - name: copy admin.conf to user's kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/kubeuser/.kube/config
+        remote_src: yes
+        owner: kubeuser
+
+    - name: install Pod network
+      become: yes
+      become_user: kubeuser
+      shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml >> pod_network_setup.txt
+      args:
+        chdir: $HOME
+        creates: pod_network_setup.txt
