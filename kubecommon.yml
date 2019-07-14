@@ -1,4 +1,4 @@
-- hosts: kubemaster,kubeslave
+- hosts: kubemaster,kubeworkers
   become: yes
   become_user: root
   tasks:
