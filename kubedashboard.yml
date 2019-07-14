@@ -1,0 +1,23 @@
+- hosts: kubemaster
+  become: yes
+  tasks:    
+          - name: kube dashboard[1/5]
+            become_user: kubeuser
+            shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v1.10.1/src/deploy/recommended/kubernetes-dashboard.yaml
+
+          - name: kube_dashboard[2/5]
+            become_user: kubeuser
+            shell: kubectl proxy --address 0.0.0.0 --accept-hosts '.*' &
+
+          - name: kube_dashboard[3/5]
+            become_user: kubeuser
+            shell: kubectl create serviceaccount dashboard -n default
+
+          - name: kube_dashboard[4/5]
+            become_user: kubeuser
+            shell: kubectl create clusterrolebinding dashboard-admin -n default  --clusterrole=cluster-admin  --serviceaccount=default:dashboard
+
+          - name: kube_dashboard[5/5]
+            become_user: kubeuser
+            shell: kubectl get secret $(kubectl get serviceaccount dashboard -o jsonpath="{.secrets[0].name}") -o jsonpath="{.data.token}" | base64 --decode
+
